@@ -10,8 +10,18 @@ time_aux db 0
 ball_x dw 1Eh;posición x (columna)
 ball_y dw 1Eh;posición y (fila)
 ball_size dw 04h;tamaño pelota -> alto(height) y ancho(width)
-ball_restart_position_x dw 6Eh ;110 px
+ball_restart_position_x dw 0a0h ;160 px
 ball_restart_position_Y dw 64h ;100 px
+
+;Paleta
+paddle_left_x dw 0ah  ;posición origen x paleta izq -> 10px
+paddle_left_y dw 0ah  ;posición origen y paleta izq -> 10px
+
+paddle_right_x dw 136h  ;posición origen x paleta izq -> 10px
+paddle_right_y dw 0ah  ;posición origen y paleta izq -> 10px
+
+paddle_width dw 05h   ;ancho paleta -> 5px
+paddle_height dw 1Fh  ;alto paleta -> 31px
 
 ;Velocidad pelota
 ball_velocity_x dw 05h ;Velocidad de pelota en x
@@ -47,7 +57,7 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             call clear_screen
             call move_ball
             call draw_ball
-
+            call draw_paddle
             jmp check_time 
 
         mov ax, 4c00h
@@ -149,6 +159,7 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
         ;Bh: parámetro Página ->  
         ;Cx: posición en x -> definimos en 0 (columna)
         ;Dx: posición en y -> definimos en 0 (Fila)
+
         mov cx, ball_x ;Posición inicial x para dibujar la bola
         mov dx, ball_y ;Posición inicial y para dibujar la bola
     
@@ -185,5 +196,59 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
 
             ret
     draw_ball endp
+
+    draw_paddle proc 
+        ;posicion inicial paleta izquierda 
+        mov cx, paddle_left_x
+        mov dx, paddle_left_y
+
+        draw_paddle_left_horinzontal:
+            ;Dibujar pixeles
+            mov ah, 0ch
+            mov al, 0fh
+            mov bh, 00h
+            int 10h
+            ;Dibuja la primera fila (todas las columnas)
+            inc cx 
+            mov ax, cx 
+            sub ax, paddle_left_x
+            cmp ax, paddle_width
+            jng draw_paddle_left_horinzontal
+
+            ;incrementa a la siguiente fila
+            mov cx, paddle_left_x
+            inc dx 
+            mov ax, dx
+            sub ax, paddle_left_y
+            cmp ax, paddle_height
+            jng draw_paddle_left_horinzontal
+
+        ;posicion inicial paleta derecha 
+        mov cx, paddle_right_x
+        mov dx, paddle_right_y
+
+        draw_paddle_right_horinzontal:
+            ;Dibujar pixeles
+            mov ah, 0ch
+            mov al, 0fh
+            mov bh, 00h
+            int 10h
+            ;Dibuja la primera fila (todas las columnas)
+            inc cx 
+            mov ax, cx 
+            sub ax, paddle_right_x
+            cmp ax, paddle_width
+            jng draw_paddle_right_horinzontal
+
+            ;incrementa a la siguiente fila
+            mov cx, paddle_right_x
+            inc dx 
+            mov ax, dx
+            sub ax, paddle_right_y
+            cmp ax, paddle_height
+            jng draw_paddle_right_horinzontal
+
+            ret 
+    draw_paddle endp
 end
 
