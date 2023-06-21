@@ -13,7 +13,12 @@ ball_size dw 04h;tamaño pelota -> alto(height) y ancho(width)
 
 ;Velocidad pelota
 ball_velocity_x dw 05h ;Velocidad de pelota en x
-ball_velocity_y dw 03h ;Velocidad de pelota en y
+ball_velocity_y dw 02h ;Velocidad de pelota en y
+
+;Dimensiones de la pantalla (limites)
+window_width dw 140h  ;ancho de la ventana (320 px)
+window_height dw 0c8h ;alto de la ventana (200 px)
+window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los limites)
 
 .code
     main proc
@@ -50,12 +55,50 @@ ball_velocity_y dw 03h ;Velocidad de pelota en y
     move_ball proc
         push ax
         ;Dibujamos la posición de la pelota agregando la velocidad
-            mov ax, ball_velocity_x
+            ;Movemos la pelota horizontalmente
+            mov ax, ball_velocity_x 
             add ball_x, ax
-            mov ax, ball_velocity_y
+            
+            ;Condiciones de colisión pared izquierda y derecha
+            ;ball_x < 0   
+            mov ax, window_bounce
+            cmp ball_x, ax
+            jl ball_velocity_x_NEG 
+            ;ball_x > 320px
+            mov ax, window_width
+            sub ax, ball_size
+            sub ax, window_bounce
+            cmp ball_x, ax
+            jg ball_velocity_x_NEG
+
+            ;Movemos la pelota verticalmente
+            mov ax, ball_velocity_y 
             add ball_y, ax
-        pop ax
-        ret
+
+            ;Condiciones de colisión pared Superior y inferior
+            ;ball_y < 0   
+            mov ax, window_bounce
+            cmp ball_y, ax
+            jl ball_velocity_y_NEG 
+            ;ball_x > 200px
+            mov ax, window_height
+            sub ax, ball_size
+            sub ax, window_bounce
+            cmp ball_y, ax
+            jg ball_velocity_y_NEG
+            
+            pop ax
+            ret
+        
+        ;Invierto el valor de la velocidad (valor que se le suma a la posición inicial). 
+        ball_velocity_x_NEG:
+            neg ball_velocity_x ;ball_velocity_x = - ball_velocity_x
+            pop ax
+            ret 
+        ball_velocity_y_NEG:
+            neg ball_velocity_y ;ball_velocity_y = - ball_velocity_y
+            pop ax
+            ret 
     move_ball endp
 
     clear_screen proc
@@ -129,3 +172,4 @@ ball_velocity_y dw 03h ;Velocidad de pelota en y
             ret
     draw_ball endp
 end
+
