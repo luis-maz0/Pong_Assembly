@@ -10,6 +10,8 @@ time_aux db 0
 ball_x dw 1Eh;posición x (columna)
 ball_y dw 1Eh;posición y (fila)
 ball_size dw 04h;tamaño pelota -> alto(height) y ancho(width)
+ball_restart_position_x dw 6Eh ;110 px
+ball_restart_position_Y dw 64h ;100 px
 
 ;Velocidad pelota
 ball_velocity_x dw 05h ;Velocidad de pelota en x
@@ -52,6 +54,16 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
         int 21h
     main endp
 
+    restart_position proc
+        ;La pelota al chocar con la pared izquierda o derecha, se reiniciará su posición al centro de la pantalla.
+        mov ax, ball_restart_position_x
+        mov ball_x, ax
+        
+        mov ax, ball_restart_position_y
+        mov ball_y, ax
+
+    restart_position endp
+
     move_ball proc
         push ax
         ;Dibujamos la posición de la pelota agregando la velocidad
@@ -63,13 +75,13 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             ;ball_x < 0   
             mov ax, window_bounce
             cmp ball_x, ax
-            jl ball_velocity_x_NEG 
+            jl reset_position_x 
             ;ball_x > 320px
             mov ax, window_width
             sub ax, ball_size
             sub ax, window_bounce
             cmp ball_x, ax
-            jg ball_velocity_x_NEG
+            jg reset_position_x
 
             ;Movemos la pelota verticalmente
             mov ax, ball_velocity_y 
@@ -90,11 +102,13 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             pop ax
             ret
         
-        ;Invierto el valor de la velocidad (valor que se le suma a la posición inicial). 
-        ball_velocity_x_NEG:
-            neg ball_velocity_x ;ball_velocity_x = - ball_velocity_x
+        ;Llamo al proc restart_position para reiniciar la posición de la pelota al centro de la pantalla. 
+        reset_position_x:
+            call restart_position
             pop ax
             ret 
+
+        ;Invierto el valor de la velocidad (valor que se le suma a la posición inicial). 
         ball_velocity_y_NEG:
             neg ball_velocity_y ;ball_velocity_y = - ball_velocity_y
             pop ax
