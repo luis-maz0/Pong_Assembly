@@ -13,6 +13,10 @@ ball_size dw 04h;tamaño pelota -> alto(height) y ancho(width)
 ball_restart_position_x dw 0a0h ;160 px
 ball_restart_position_Y dw 64h ;100 px
 
+;Velocidad pelota
+ball_velocity_x dw 05h ;Velocidad de pelota en x
+ball_velocity_y dw 02h ;Velocidad de pelota en y
+
 ;Paleta
 paddle_left_x dw 0ah  ;posición origen x paleta izq -> 10px
 paddle_left_y dw 0ah  ;posición origen y paleta izq -> 10px
@@ -23,9 +27,9 @@ paddle_right_y dw 0ah  ;posición origen y paleta izq -> 10px
 paddle_width dw 05h   ;ancho paleta -> 5px
 paddle_height dw 1Fh  ;alto paleta -> 31px
 
-;Velocidad pelota
-ball_velocity_x dw 05h ;Velocidad de pelota en x
-ball_velocity_y dw 02h ;Velocidad de pelota en y
+;Velocidad de paleta
+paddle_velocity dw 05h
+
 
 ;Dimensiones de la pantalla (limites)
 window_width dw 140h  ;ancho de la ventana (320 px)
@@ -57,12 +61,53 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             call clear_screen
             call move_ball
             call draw_ball
+            call move_paddle
             call draw_paddle
             jmp check_time 
 
         mov ax, 4c00h
         int 21h
     main endp
+
+    move_paddle proc
+        ;Interrupción 16h y servicio 1 -> Va a obtener el estado del teclado. ZF = 0 si se presiono una tecla. 
+        mov ah, 01h
+        int 16h 
+        jz check_rigth_paddle_movement
+
+        ;Interrupción 16h y servicio 0 -> Va a esperar a que una tecla se oprima y lee el caracter de la misma. 
+        ;Al -> Caracter ASCII. 
+        mov ah, 00h 
+        int 16h 
+
+        ;Verificamos si se presiono la tecla w -> arriba 
+        cmp al, 'w' 
+        je move_left_paddle_up
+        cmp al, 'W' 
+        je move_left_paddle_up
+
+        ;Verificamos si se presiono la tecla s -> abajo 
+        cmp al, 's' 
+        je move_left_paddle_down
+        cmp al, 'S' 
+        je move_left_paddle_down
+
+        jmp check_rigth_paddle_movement 
+
+        move_left_paddle_up:
+            mov ax, paddle_velocity
+            sub paddle_left_y, ax 
+            jmp check_rigth_paddle_movement 
+
+        move_left_paddle_down:
+            mov ax, paddle_velocity
+            add paddle_left_y, ax 
+            jmp check_rigth_paddle_movement 
+
+        check_rigth_paddle_movement:
+
+        ret
+    move_paddle endp
 
     restart_position proc
         ;La pelota al chocar con la pared izquierda o derecha, se reiniciará su posición al centro de la pantalla.
