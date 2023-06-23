@@ -97,13 +97,34 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
         move_left_paddle_up:
             mov ax, paddle_velocity
             sub paddle_left_y, ax 
+
+            ;Verificamos que la paleta no supere el limite de la pared superior(techo) -> Comparamos la posición de la paleta en y con window_bounde = 6px.  
+            mov ax, window_bounce 
+            cmp paddle_left_y, ax  
+            jl stop_top_movement_left_paddle
             jmp check_rigth_paddle_movement 
+
+            stop_top_movement_left_paddle: 
+                mov paddle_left_y, ax ;asignamos el valor de 6px a la posición en y de la paleta izquierda. 
+                jmp check_rigth_paddle_movement 
 
         move_left_paddle_down:
             mov ax, paddle_velocity
             add paddle_left_y, ax 
-            jmp check_rigth_paddle_movement 
+            
 
+            ;Verificamos que la paleta no supere el limite inferior (piso)-> Tomamos el alto de la ventana y le restamos el alto de la paleta y del rebote de la pelota y comparamos con la posición de la paleta en y. 
+            mov ax, window_height
+            sub ax, paddle_height
+            sub ax, window_bounce
+            cmp paddle_left_y, ax 
+            jg stop_bottom_movement_left_paddle
+            jmp check_rigth_paddle_movement
+            
+            stop_bottom_movement_left_paddle:
+                mov paddle_left_y, ax 
+                jmp check_rigth_paddle_movement
+        
         check_rigth_paddle_movement:
 
         ret
