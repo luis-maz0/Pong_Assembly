@@ -28,7 +28,7 @@ paddle_width dw 05h   ;ancho paleta -> 5px
 paddle_height dw 1Fh  ;alto paleta -> 31px
 
 ;Velocidad de paleta
-paddle_velocity dw 05h
+paddle_velocity dw 07h
 
 
 ;Dimensiones de la pantalla (limites)
@@ -223,6 +223,8 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             cmp ball_y, ax
             jg ball_velocity_y_NEG
             
+            call colision_ball_paddle
+
             pop ax
             ret
         
@@ -238,6 +240,80 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             pop ax
             ret 
     move_ball endp
+
+    colision_ball_paddle proc
+        push ax 
+         ;Checkeamos si la pelota colisiona con la paleta derecha    
+            ;(maxx1 > minx2) && 
+            ;(minx1 < maxx2) && 
+            ;(maxy1 > miny2) && 
+            ;(miny1 < maxy2)
+
+            ;Equivalente a:  
+
+            ;((ball_x + ball_size) > paddle_right_x ) && 
+            ;(ball_x < (paddle_right_x + paddle_width)) && 
+            ;((ball_y + ball_size)> paddle_right_y) && 
+            ;(ball_y < (paddle_right_y + paddle_height))
+
+            mov ax, ball_x
+            add ax, ball_size
+            cmp ax, paddle_right_x 
+            jng check_colision_left_paddle ;Si no hay colisión, chequear paleta izquierda
+
+            mov ax, paddle_right_x
+            add ax, paddle_width
+            cmp ax, ball_x
+            jng check_colision_left_paddle
+
+            mov ax, ball_y
+            add ax, ball_size
+            cmp ax, paddle_right_y 
+            jng check_colision_left_paddle
+
+            mov ax, paddle_right_y
+            add ax, paddle_height
+            cmp ax, ball_y 
+            jng check_colision_left_paddle
+            
+            ;Si llegamos a este punto, la pelota colisionó con la paleta derecha => Revertimos la velocidad de la pelota. 
+            neg ball_velocity_x 
+            pop ax 
+            ret ;No puede colisionar con la otra paleta. 
+
+        check_colision_left_paddle:
+            ;Checkeamos si la pelota colisiona con la paleta izquierda
+            ;((ball_x + ball_size) > paddle_left_x ) && 
+            ;(ball_x < (paddle_left_x + paddle_width)) && 
+            ;((ball_y + ball_size)> paddle_left_y) && 
+            ;(ball_y < (paddle_left_y + paddle_height))
+            mov ax, ball_x
+            add ax, ball_size
+            cmp ax, paddle_left_x 
+            jng end_check_colision ;Si no hay colisión, chequear paleta izquierda
+
+            mov ax, paddle_left_x
+            add ax, paddle_width
+            cmp ax, ball_x
+            jng end_check_colision
+
+            mov ax, ball_y
+            add ax, ball_size
+            cmp ax, paddle_left_y 
+            jng end_check_colision
+
+            mov ax, paddle_left_y
+            add ax, paddle_height
+            cmp ax, ball_y 
+            jng end_check_colision
+            
+            ;Si llegamos a este punto, la pelota colisionó con la paleta derecha => Revertimos la velocidad de la pelota. 
+            neg ball_velocity_x 
+
+        end_check_colision:
+            pop ax
+            ret
+    colision_ball_paddle endp
 
     clear_screen proc
         push ax
@@ -365,4 +441,3 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             ret 
     draw_paddle endp
 end
-
