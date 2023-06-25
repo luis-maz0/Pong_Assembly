@@ -70,10 +70,13 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
     main endp
 
     move_paddle proc
-        ;Interrupción 16h y servicio 1 -> Va a obtener el estado del teclado. ZF = 0 si se presiono una tecla. 
+        ;VERIFICAMOS MOVIMIENTO DE LA PALETA IZQUIERDA.
+
+        ;Interrupción 16h y servicio 1 -> Va a obtener el estado del teclado. 
+		;ZF = 0 si se presiono una tecla. 
         mov ah, 01h
         int 16h 
-        jz check_rigth_paddle_movement
+        jz check_right_paddle_movement
 
         ;Interrupción 16h y servicio 0 -> Va a esperar a que una tecla se oprima y lee el caracter de la misma. 
         ;Al -> Caracter ASCII. 
@@ -85,49 +88,94 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
         je move_left_paddle_up
         cmp al, 'W' 
         je move_left_paddle_up
-
         ;Verificamos si se presiono la tecla s -> abajo 
         cmp al, 's' 
         je move_left_paddle_down
         cmp al, 'S' 
         je move_left_paddle_down
 
-        jmp check_rigth_paddle_movement 
+        jmp check_right_paddle_movement 
 
+        ;Agregamos movimineto ascendente
         move_left_paddle_up:
             mov ax, paddle_velocity
             sub paddle_left_y, ax 
 
-            ;Verificamos que la paleta no supere el limite de la pared superior(techo) -> Comparamos la posición de la paleta en y con window_bounde = 6px.  
+            ;Verificamos que la paleta no supere el limite de la pared superior
+			;(techo) -> Comparamos la posición de la paleta en y con 
+			;window_bounde = 6px.  
             mov ax, window_bounce 
             cmp paddle_left_y, ax  
             jl stop_top_movement_left_paddle
-            jmp check_rigth_paddle_movement 
+            jmp check_right_paddle_movement 
 
             stop_top_movement_left_paddle: 
                 mov paddle_left_y, ax ;asignamos el valor de 6px a la posición en y de la paleta izquierda. 
-                jmp check_rigth_paddle_movement 
+                jmp check_right_paddle_movement 
 
+        ;Agregamos movimineto descendente
         move_left_paddle_down:
             mov ax, paddle_velocity
             add paddle_left_y, ax 
             
-
-            ;Verificamos que la paleta no supere el limite inferior (piso)-> Tomamos el alto de la ventana y le restamos el alto de la paleta y del rebote de la pelota y comparamos con la posición de la paleta en y. 
+          ;Verificamos que la paleta no supere el limite inferior (piso)-> Tomamos el alto de la ventana y le restamos el alto de la paleta y del rebote de la pelota y comparamos con la posición de la paleta en y. 
             mov ax, window_height
             sub ax, paddle_height
             sub ax, window_bounce
             cmp paddle_left_y, ax 
             jg stop_bottom_movement_left_paddle
-            jmp check_rigth_paddle_movement
+            jmp check_right_paddle_movement
             
             stop_bottom_movement_left_paddle:
                 mov paddle_left_y, ax 
-                jmp check_rigth_paddle_movement
-        
-        check_rigth_paddle_movement:
+                jmp check_right_paddle_movement
+         
+        ;VERIFICAMOS MOVIMIENTO DE LA PALETA DERECHA.
+        check_right_paddle_movement:
+            ;Verificamos si se presiono la tecla o -> arriba 
+            cmp al, 'o' 
+            je move_right_paddle_up
+            cmp al, 'O' 
+            je move_right_paddle_up
+            
+            ;Verificamos si se presiono la tecla k -> abajo 
+            cmp al, 'k' 
+            je move_right_paddle_down
+            cmp al, 'K' 
+            je move_right_paddle_down
+            jmp end_check_movement 
 
-        ret
+            move_right_paddle_up:
+                mov ax, paddle_velocity
+                sub paddle_right_y, ax 
+
+                ;Limite con techo
+                mov ax, window_bounce 
+                cmp paddle_right_y, ax  
+                jl stop_top_movement_right_paddle
+                jmp end_check_movement  
+
+                stop_top_movement_right_paddle:
+                    mov paddle_right_y, ax 
+                    jmp end_check_movement  
+
+            move_right_paddle_down:
+                mov ax, paddle_velocity
+                add paddle_right_y, ax     
+                ;Limite con piso
+                mov ax, window_height
+                sub ax, paddle_height
+                sub ax, window_bounce
+                cmp paddle_right_y, ax 
+                jg stop_bottom_movement_right_paddle
+                jmp end_check_movement 
+                
+                stop_bottom_movement_right_paddle:
+                    mov paddle_right_y, ax 
+                    jmp end_check_movement 
+
+            end_check_movement:
+            ret
     move_paddle endp
 
     restart_position proc
