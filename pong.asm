@@ -6,6 +6,15 @@
 ;Tiempo
 time_aux db 0
 
+;Puntos
+paddle_left_points db 0 ;puntos jugador 1
+paddle_right_points db 0 ;puntos jugador 2
+limit_points_to_win db 05h ;limite de puntos para ganar
+
+;Textos puntos
+text_paddle_left_points db '0', '$' ;Texto puntos jugador 1
+text_paddle_right_points db '0', '$' ;;Texto puntos jugador 2
+
 ;Pelota
 ball_x dw 1Eh;posición x (columna)
 ball_y dw 1Eh;posición y (fila)
@@ -20,16 +29,13 @@ ball_velocity_y dw 02h ;Velocidad de pelota en y
 ;Paleta
 paddle_left_x dw 0ah  ;posición origen x paleta izq -> 10px
 paddle_left_y dw 0ah  ;posición origen y paleta izq -> 10px
-
 paddle_right_x dw 136h  ;posición origen x paleta izq -> 10px
 paddle_right_y dw 0ah  ;posición origen y paleta izq -> 10px
-
 paddle_width dw 05h   ;ancho paleta -> 5px
 paddle_height dw 1Fh  ;alto paleta -> 31px
 
 ;Velocidad de paleta
 paddle_velocity dw 07h
-
 
 ;Dimensiones de la pantalla (limites)
 window_width dw 140h  ;ancho de la ventana (320 px)
@@ -40,15 +46,15 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
     main proc
         mov ax, @data
         mov ds, ax
-        
-        call clear_screen
 
+        call clear_screen
         ;Obtenemos la hora actual del sistema.
         ;ah: servicio 2ch -> obtiene la hora del sistema 
         ;ch = hora
         ;cl = minuto
         ;dh = segundo
         ;dl = 1/100 segundos
+
         check_time:
             mov ah, 2ch
             int 21h
@@ -63,6 +69,7 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             call draw_ball
             call move_paddle
             call draw_paddle
+            call draw_points 
             jmp check_time 
 
         mov ax, 4c00h
@@ -179,6 +186,7 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
     move_paddle endp
 
     restart_position proc
+        push ax 
         ;La pelota al chocar con la pared izquierda o derecha, se reiniciará su posición al centro de la pantalla.
         mov ax, ball_restart_position_x
         mov ball_x, ax
@@ -186,10 +194,12 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
         mov ax, ball_restart_position_y
         mov ball_y, ax
 
+        pop ax 
+        ret 
     restart_position endp
 
     move_ball proc
-        push ax
+            push ax
         ;Dibujamos la posición de la pelota agregando la velocidad
             ;Movemos la pelota horizontalmente
             mov ax, ball_velocity_x 
@@ -199,13 +209,13 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             ;ball_x < 0   
             mov ax, window_bounce
             cmp ball_x, ax
-            jl reset_position_x 
+            jl point_paddle_right_and_reset_position
             ;ball_x > 320px
             mov ax, window_width
             sub ax, ball_size
             sub ax, window_bounce
             cmp ball_x, ax
-            jg reset_position_x
+            jg point_paddle_left_and_reset_position
 
             ;Movemos la pelota verticalmente
             mov ax, ball_velocity_y 
@@ -228,12 +238,38 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             pop ax
             ret
         
-        ;Llamo al proc restart_position para reiniciar la posición de la pelota al centro de la pantalla. 
-        reset_position_x:
+        ;Incrementamos un punto al jugador y llamamos al proc restart_position para reiniciar la posición de la pelota al centro de la pantalla. 
+        point_paddle_right_and_reset_position:
+            inc paddle_right_points
             call restart_position
+            ;Actualizamos los puntos de la text_point. 
+            call update_points_right_paddle
+            mov al, limit_points_to_win ;Comparamos si el jugador llego a los 5 puntos
+            cmp paddle_right_points, al
+            jge game_over
+
+            pop ax
+            ret 
+        
+        point_paddle_left_and_reset_position:
+            inc paddle_left_points
+            call restart_position
+            call update_points_left_paddle
+            mov al, limit_points_to_win
+            cmp paddle_left_points, al
+            jge game_over
+
             pop ax
             ret 
 
+        game_over: 
+            ;Termina el juego e inicializa los puntos a 0. 
+            mov paddle_left_points, 00h
+            mov paddle_right_points, 00h 
+            call update_points_left_paddle 
+            call update_points_right_paddle 
+            pop ax
+            ret 
         ;Invierto el valor de la velocidad (valor que se le suma a la posición inicial). 
         ball_velocity_y_NEG:
             neg ball_velocity_y ;ball_velocity_y = - ball_velocity_y
@@ -440,4 +476,62 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
 
             ret 
     draw_paddle endp
+
+    draw_points proc
+        ;Mostraremos los puntos en pantalla utilizando la interrupción 21h servicio 09h
+        ;También utilizaremos la interrupción 10h y el servicio 02h para setear la posición del cursor. 
+        
+        ;Puntos del jugador 1(paddle left)
+            ;Establecemos la posición del cursor
+            mov ah, 02h     
+            mov bh, 00h     ;Seteamos el número de pagina
+            mov dh, 04h     ;Seteamos la fila
+            mov dl, 07h     ;Seteamos la columna
+            int 10h 
+
+            ;Escribimos los puntos
+            mov ah, 09h 
+            lea dx, text_paddle_left_points ;= mov dx, offset text_paddle_left_points 
+            int 21h 
+
+        ;Puntos del jugador 2(paddle right)
+           
+            mov ah, 02h     
+            mov bh, 00h     
+            mov dh, 04h     
+            mov dl, 1fh      
+            int 10h 
+
+            ;Escribimos los puntos
+            mov ah, 09h 
+            lea dx, text_paddle_right_points 
+            int 21h 
+          
+        ret 
+    draw_points endp
+
+    update_points_left_paddle proc
+        push ax 
+        ;vamos a actualizar los puntos de la variable text_point. Para ello hay que convertir el valor de los puntos(reg) a texto (ascii). Una manera sencilla de hacer esto es sumar 30h al valor de la variable "paddle_left_points". 
+        ;Como nuestro juego no va a superar los 9 puntos va a servir. 
+
+        xor ax, ax ;Limpia registro ax, lo inicializa en 0. 
+        mov al, paddle_left_points
+        add al, 30h 
+        mov text_paddle_left_points, al 
+
+        pop ax
+        ret
+    update_points_left_paddle endp
+    
+    update_points_right_paddle proc
+        push ax 
+        xor ax, ax ;Limpia registro ax, lo inicializa en 0. 
+        mov al, paddle_right_points
+        add al, 30h 
+        mov text_paddle_right_points, al 
+
+        pop ax
+        ret
+    update_points_right_paddle endp
 end
