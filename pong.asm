@@ -3,17 +3,24 @@
 .stack 100h
 
 .data
+;Juego
+game_active db 01h ; 1=juego activo, 0=gameover 
+winner_index db 0 ;Esto lo usaremos para cambiar el cartel del ganador(1 o 2)
+
 ;Tiempo
 time_aux db 0
 
 ;Puntos
 paddle_left_points db 0 ;puntos jugador 1
 paddle_right_points db 0 ;puntos jugador 2
-limit_points_to_win db 05h ;limite de puntos para ganar
+limit_points_to_win db 01h ;limite de puntos para ganar
 
-;Textos puntos
+;Textos 
 text_paddle_left_points db '0', '$' ;Texto puntos jugador 1
-text_paddle_right_points db '0', '$' ;;Texto puntos jugador 2
+text_paddle_right_points db '0', '$' ;Texto puntos jugador 2
+text_game_over_title db 'GAME OVER','$' ;Texto pantalla game over
+text_game_over_play_again db 'Press R to play again','$' ;Texto para reiniciar el texto
+text_game_winner db "PLAYER 0 WINS",'$' ;Texto ganador de la partida
 
 ;Pelota
 ball_x dw 1Eh;posición x (columna)
@@ -56,6 +63,9 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
         ;dl = 1/100 segundos
 
         check_time:
+            cmp game_active, 00h
+            je show_game_over_screen
+            
             mov ah, 2ch
             int 21h
 
@@ -71,9 +81,11 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             call draw_paddle
             call draw_points 
             jmp check_time 
+        show_game_over_screen:
+            call draw_game_over_screen
+            jmp check_time
+        
 
-        mov ax, 4c00h
-        int 21h
     main endp
 
     move_paddle proc
@@ -263,11 +275,27 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
             ret 
 
         game_over: 
+            ;Verificamos quien es el ganador
+            mov ah, limit_points_to_win
+            cmp paddle_left_points, ah 
+            je player_one_wins
+            jmp player_two_wins
+
+            ;actualizamos winner index 
+            player_one_wins: 
+                mov winner_index, 01H 
+                jmp continue_game_over_process            
+            player_two_wins:
+                mov winner_index, 02H
+                jmp continue_game_over_process
+
+        continue_game_over_process:
             ;Termina el juego e inicializa los puntos a 0. 
             mov paddle_left_points, 00h
             mov paddle_right_points, 00h 
             call update_points_left_paddle 
-            call update_points_right_paddle 
+            call update_points_right_paddle
+            mov game_active, 0 ;cambiamos valor de 0 para terminar. 
             pop ax
             ret 
         ;Invierto el valor de la velocidad (valor que se le suma a la posición inicial). 
@@ -509,6 +537,75 @@ window_bounce dw 06h  ;Valor borde ventana (para que la pelota no se pase de los
           
         ret 
     draw_points endp
+
+    draw_game_over_screen proc
+        push ax 
+        
+        call clear_screen ;limpiamos pantalla. 
+
+        ;****HACER FUNCIÓN DE POSICIÓN DE PANTALLA CON PARAMETROS POR STACK***
+        ;Posición del cursor 
+        mov ah, 02h     
+        mov bh, 00h     ;Seteamos el número de pagina
+        mov dh, 04h     ;Seteamos la fila
+        mov dl, 0fh     ;Seteamos la columna
+        int 10h 
+
+        ;mostrar titulo
+        mov ah, 09h 
+        lea dx, text_game_over_title 
+        int 21h 
+
+        call update_winner_index_text ;Actualizamos si gano el jugador 1 o 2. 
+
+        mov ah, 02h     
+        mov bh, 00h     ;Seteamos el número de pagina
+        mov dh, 0ah     ;Seteamos la fila
+        mov dl, 0dh     ;Seteamos la columna
+        int 10h 
+        ;mostrar ganador
+        mov ah, 09h 
+        lea dx, text_game_winner
+        int 21h 
+
+
+        mov ah, 02h     
+        mov bh, 00h     ;Seteamos el número de pagina
+        mov dh, 11h     ;Seteamos la fila
+        mov dl, 0ah     ;Seteamos la columna
+        int 10h 
+
+        ;mostrar ganador
+        mov ah, 09h 
+        lea dx, text_game_over_play_again
+        int 21h 
+
+        ;Opciones para reiniciar el juego
+        mov ah, 00h ;Esperamos que el usuario ingrese una tecla.
+        int 16h 
+
+        cmp al, 'R'
+        cmp al, 'r'
+        je restart_game
+
+        restart_game: 
+        mov game_active, 01h 
+
+        pop ax 
+        ret 
+    draw_game_over_screen endp 
+
+    update_winner_index_text proc 
+        push ax 
+        ;Actualizamos la variable text_game_winner con el valor de winner_index
+        
+        mov al, winner_index ;Pasamos el valor 1 o 2 a AL. 
+        add al, 30h ;lo convertimos a ascii. 
+        mov [text_game_winner + 7], al ;reemplazamos el 0 o valor anterior.  
+        
+        pop ax 
+        ret 
+    update_winner_index_text endp  
 
     update_points_left_paddle proc
         push ax 
